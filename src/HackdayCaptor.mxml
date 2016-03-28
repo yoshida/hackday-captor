@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TabbedViewNavigatorApplication xmlns:fx="http://ns.adobe.com/mxml/2009" fontFamily="メイリオ" fontSize="9"
+								  xmlns:s="library://ns.adobe.com/flex/spark" applicationDPI="160">
+	<s:ViewNavigator label="HackdayCaptor" width="100%" height="100%" firstView="views.HomeView"/>
+	<s:ViewNavigator label="Setting" width="100%" height="100%" firstView="views.SettingView"/>
+	
+</s:TabbedViewNavigatorApplication>

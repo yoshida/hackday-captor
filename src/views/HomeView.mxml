@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		xmlns:mx="library://ns.adobe.com/flex/mx"
+		title="HackdayCaptor"
+		creationComplete="view1_creationCompleteHandler(event)">
+
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			import mx.formatters.DateFormatter;
+			import mx.graphics.codec.PNGEncoder;
+			
+			import conf.Setting;
+			
+			private const VIEW_HEIGHT:Number = 180;
+			private const VIEW_WIDTH:Number = 240;
+
+			private const CAPTURE_HEIGHT:Number = 1200;
+			private const CAPTURE_WIDTH:Number = 1600;
+			
+			private var cam:Camera;
+			private var video1:Video;
+			private var video2:Video;
+			private var isTaking:Boolean;
+			private var timer:Timer;
+			private var interval:Number;
+			
+			protected function view1_creationCompleteHandler(event:FlexEvent):void
+			{
+				__initialize();
+			}
+			
+			private function __initialize():void
+			{
+				
+				cam = Camera.getCamera('0');
+//				cam.setLoopback(true);
+				cam.setMode(CAPTURE_WIDTH, CAPTURE_HEIGHT, 30);
+				cam.setQuality(0, 100);
+				
+				video1 = new Video(VIEW_WIDTH, VIEW_HEIGHT);
+				video1.opaqueBackground = true;
+				video1.attachCamera(cam);				
+				cameraUIComponent1.addChild(video1);
+				cameraUIComponent1.width = VIEW_WIDTH;
+				cameraUIComponent1.height = VIEW_HEIGHT;
+				
+				video2 = new Video(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+				video2.opaqueBackground = true;
+				video2.attachCamera(cam);				
+				cameraUIComponent2.addChild(video2);
+				
+				isTaking = false;
+				
+			}
+			
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				
+				isTaking = !isTaking;
+
+				
+				if (isTaking)
+				{
+					btnTake.label = "stop"
+					interval = Number(txtInterval.text);
+					timer = new Timer(1000, interval);
+					timer.addEventListener(TimerEvent.TIMER, timerHandler);
+					timer.addEventListener(TimerEvent.TIMER_COMPLETE, timerCompleteHandler);
+					timer.start();
+
+				} else {
+					timer.stop();
+					timer.removeEventListener(TimerEvent.TIMER, timerHandler);
+					timer.removeEventListener(TimerEvent.TIMER_COMPLETE, timerCompleteHandler);
+					btnTake.label = "start";
+					labelCountDown.text = "-";
+				}
+
+				
+			}
+			
+			private function timerHandler(event:TimerEvent):void {
+				labelCountDown.text = String(interval - timer.currentCount);
+			}
+			
+			private function timerCompleteHandler(event:TimerEvent):void {
+				timer.reset();
+				labelCountDown.text = String(interval - timer.currentCount);
+				takePicture();
+				timer.start();
+			}
+			
+			
+			private function takePicture():void
+			{
+				var bmData:BitmapData = new BitmapData(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+				bmData.draw(video2);
+				
+				var encoder:PNGEncoder = new PNGEncoder();
+				var pngData:ByteArray = encoder.encode(bmData);
+				
+				outFile("hackday", pngData);				
+			}
+			
+			private function displayLog(file:String):void{
+				
+				var _datefo:DateFormatter = new DateFormatter();
+				_datefo.formatString = "YYYY/MM/DD JJ:NN:SS";
+				var now:Date = new Date();
+				var date:String = _datefo.format(now);
+				
+				labelLogDate.text = date;
+				labelLogFile.text = file;
+			}
+			
+			private function outFile(fileName:String, data:ByteArray):void 
+			{ 
+				
+				var _datefo:DateFormatter = new DateFormatter();
+				_datefo.formatString = "YYYYMMDD-JJNNSS";
+				var now:Date = new Date();
+				var date:String = _datefo.format(now);
+				
+				var outFile:File = Setting.savedir; // dest folder is desktop 
+				outFile.createDirectory();
+
+				outFile = outFile.resolvePath(Setting.prefix + "-" + date + ".png");  // name of file to write 
+
+				var outStream:FileStream = new FileStream(); 
+				// open output file stream in WRITE mode 
+				outStream.open(outFile, FileMode.WRITE); 
+				// write out the file 
+				outStream.writeBytes(data, 0, data.length); 
+				// close it 
+				outStream.close(); 
+				
+				displayLog(outFile.nativePath);
+			} 
+			
+		]]>
+	</fx:Script>
+	
+	<s:Group id="groupCamera2" x="{width}" y="{height}">
+		<mx:UIComponent id="cameraUIComponent2" />
+	</s:Group>		
+
+	
+	<s:HGroup verticalAlign="middle" height="100%">
+		<s:HGroup>
+			<s:Group id="groupCamera1">
+				<mx:UIComponent id="cameraUIComponent1" />
+			</s:Group>
+		</s:HGroup>
+		<s:VGroup>
+			<s:VGroup verticalAlign="middle">
+				<s:Label fontSize="9" color="#555555">指定した秒数の間隔で永遠に写真を撮り続けます。</s:Label>
+			</s:VGroup>
+			<s:Spacer height="10"></s:Spacer>
+			<s:HGroup verticalAlign="middle">
+				<s:Label>Interval(sec)</s:Label>
+				<s:TextInput id="txtInterval" width="50" height="30">30</s:TextInput>
+				<s:Spacer width="10"></s:Spacer>
+				<s:Button id="btnTake" fontSize="10" width="80" height="30" click="button1_clickHandler(event)">start</s:Button>
+			</s:HGroup>
+			<s:Spacer height="10"></s:Spacer>
+			<s:HGroup verticalAlign="middle">
+				<s:Label fontSize="6" color="#666666">次のショットまで あと </s:Label>
+				<s:Label id="labelCountDown" fontSize="9" color="#DD6666">-</s:Label>
+				<s:Label fontSize="6" color="#666666">秒</s:Label>				
+			</s:HGroup>
+			<s:Spacer height="10"></s:Spacer>
+			<s:VGroup verticalAlign="middle">
+				<s:Label fontSize="6" color="#666666">最終撮影日時</s:Label>
+				<s:Label id="labelLogDate" fontSize="6" color="#666666">なし</s:Label>
+				<s:Label id="labelLogFile" fontSize="6" color="#666666"></s:Label>
+			</s:VGroup>
+		</s:VGroup>
+	</s:HGroup>
+
+</s:View>
